@@ -1,6 +1,6 @@
 # Baltic Sea fish community HMSC model
 
-This repository contains the scripts used in the manuscript Drivers and assembly processes shaping patterns and changes in fish community composition and diversity: the Baltic Sea as a case study by Tom Jimenez, Marcel Montanyès, Federico Maioli, Baptiste Degueurce and Martin Lindegren.
+This repository contains the scripts used in the manuscript Drivers and assembly processes shaping fish community composition and diversity: the Baltic Sea as a case study by Tom Jimenez, Marcel Montanyès, Federico Maioli, Baptiste Degueurce and Martin Lindegren.
 
 ## Scripts
 
