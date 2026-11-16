@@ -1,8 +1,9 @@
 ################################################################################
 ##### Script 1 : Descriptive figures -------------------------------------------
+##### Tom Jimenez, 16-11-2026 --------------------------------------------------
 ################################################################################
 
-# remove(list=ls())
+remove(list=ls())
 # see your current working directory
 getwd()
 
@@ -18,7 +19,7 @@ fish_survey$season <- as.factor(fish_survey$season)
 data <- fish_survey
 head(data)
 
-# Load libraries and functions
+# Load libraries
 
 library(ggplot2)
 library(dplyr)
@@ -29,7 +30,9 @@ library(rlang)
 library(mgcv)
 library(tidyr)
 
-### Sampling map ----
+################################################################################
+##### Sampling map -------------------------------------------------------------
+################################################################################
 
 my_studyArea <- data.frame(lon = data$lon, lat = data$lat)
 
@@ -99,12 +102,8 @@ ggplot(data_filtered, aes(x = lon,y = lat)) +
 
 ### Depth map ----
 
-# Load data
-data<- readRDS("./data/fish_survey_Baltic_sea_v2.rds")
 
-# Colour palette
-# colpal <- c("midnightblue", "ghostwhite", "coral4")
-
+#colpal <- c("midnightblue", "ghostwhite", "coral4")
 colpal = viridis(100, option = "plasma")
 
 # Create the graph
@@ -120,11 +119,9 @@ ggplot(data, aes(x = lon, y = lat)) +
   theme(legend.title = element_text(size = 11), legend.text = element_text(size = 10)) +
   guides(shape = guide_legend(override.aes = list(size = 1)))
 
-ggsave("./plots/Depth map.png", width = 8, height = 6)
+ggsave("./plots/Depth_map.png", width = 8, height = 6)
 
 ### Temperature floor (or other parameter) map ----
-
-data <- fish_survey
 
 # We select to use data from the year 2021 only even if the original data would include repeated surveys to the same locations.
 data = droplevels(subset(data,Year==2021))
@@ -229,94 +226,20 @@ test <- Over.7
 toPlot <- round(cor.all,2)
 #toPlot[abs(toPlot) < 0.7] <- 0
 #plotOrder <-  corrMatOrder(toPlot, order="AOE") # Euclidian distances
-#corrplot(as.matrix(toPlot[plotOrder,plotOrder]), method = "color", col = colorRampPalette(c("deepskyblue2",rep("white", 7),"firebrick1"))(20), mar = c(0,0,0,0), type = "lower", tl.col="black", tl.cex = 1)
+#corrplot(as.matrix(toPlot[plotOrder,plotOrder]), method = "color", col = colorRampPalette(c("#2166AC",rep("white", 7),"#E31B23"))(20), mar = c(0,0,0,0), type = "lower", tl.col="black", tl.cex = 1)
 
 all(names(toPlot) == rownames(toPlot))
 names(toPlot)
 
 library(ggcorrplot)
 ggcorrplot(toPlot, show.diag = T, hc.order = F, type = "lower", legend.title = "Correlation",
-           outline.col = "lightgrey", colors = c("deepskyblue2", "white","firebrick1"), lab = TRUE) +
+           outline.col = "lightgrey", colors = c("#2166AC", "white","#E31B23"), lab = TRUE) +
   scale_fill_stepsn(name = "Correlation", breaks = c(-1,-0.7,0.7,1), limits = c(-1,1), show.limits = T,
-                    colours = c("deepskyblue2","white","firebrick1"))
+                    colours = c("#2166AC","white","#E31B23"))
 
 ggcorrplot(toPlot, show.diag = TRUE, hc.order = FALSE, type = "lower", 
-           outline.col = "lightgrey", colors = c("deepskyblue2", "white","firebrick1"), lab = TRUE) +
-  scale_fill_gradient2(name = "Correlation", low = "deepskyblue2", mid = "white", high = "firebrick1", 
+           outline.col = "lightgrey", colors = c("#2166AC", "white","#E31B23"), lab = TRUE) +
+  scale_fill_gradient2(name = "Correlation", low = "#2166AC", mid = "white", high = "#E31B23", 
                        midpoint = 0, limits = c(-1, 1), space = "Lab")
 
-ggcorrplot(toPlot, show.diag = T, hc.order = F, type = "lower", legend.title = "Correlation",
-           outline.col = "lightgrey", colors = c("deepskyblue2", "white","firebrick1"), lab = TRUE, digits = 2) +
-  scale_fill_stepsn(name = "Correlation", breaks = c(-1,-0.7,0.7,1), limits = c(-1,1), show.limits = T,
-                    colours = c("deepskyblue2","white","firebrick1")) +
-  theme(axis.text.x = element_text(colour = c("#009E73", "#009E73", "#009E73",
-                                              "#E69F00", "#E69F00", "#E69F00",
-                                              "#000000", "#000000", "#000000", "#000000")),
-        axis.text.y = element_text(colour = c("#009E73", "#009E73", "#009E73",
-                                              "#E69F00", "#E69F00", "#E69F00",
-                                              "#000000", "#000000", "#000000", "#000000")),
-        legend.key.size = unit(1, 'cm'), #change legend key size
-        legend.key.height = unit(1, 'cm'), #change legend key height
-        legend.key.width = unit(1, 'cm'), #change legend key width
-        legend.title = element_text(size=14), #change legend title font size
-        legend.text = element_text(size=10))
-
-# Limit set at 0.7:
-
-cor.check <- as.data.frame(cor(data[,c(
-  "T_surf", "T_floor",
-  "Sal_surf", "O2_surf", 
-  "Sal_floor", "season"
-)]))
-Over72 <- round(cor.check,2)
-Over72[abs(Over72) < 0.7] <- 0
-Over72
-
-ggcorrplot(Over72, show.diag = T, hc.order = TRUE, type = "lower", legend.title = "Correlation",
-           outline.col = "lightgrey", colors = c("deepskyblue2", "white","firebrick1"), lab = TRUE) +
-  scale_fill_stepsn(name = "Correlation", breaks = c(-1,-0.7,0.7,1), limits = c(-1,1), show.limits = T,
-                    colours = c("deepskyblue2","white","firebrick1"))
-
-### Correlation matrix for the fish traits ----
-
-fish_traits <- readRDS("./data/fish_traits.rds")
-
-# Transformer les traits factoriels en variables numériques
-alltraits_numeric <- fish_traits
-alltraits_numeric$habitat <- as.numeric(as.factor(alltraits_numeric$habitat))
-alltraits_numeric$body.shape <- as.numeric(as.factor(alltraits_numeric$body.shape))
-alltraits_numeric$feeding.mode <- as.numeric(as.factor(alltraits_numeric$feeding.mode))
-alltraits_numeric$fin.shape <- as.numeric(as.factor(alltraits_numeric$fin.shape))
-alltraits_numeric$spawning.type <- as.numeric(as.factor(alltraits_numeric$spawning.type))
-
-cor.tr <- as.data.frame(cor(alltraits_numeric[,c( 
-  "habitat", "body.shape", "feeding.mode", "fin.shape", "spawning.type",
-  "log_age.maturity", "log_length.max", "log_offspring.size",
-  "log_fecundity", "log_growth"
-)]))
-
-tr.7 <- round(cor.tr,2)
-tr.7[abs(tr.7) < 0.7] <- 0
-tr.7
-
-library(ggcorrplot)
-ggcorrplot(tr.7, show.diag = T, hc.order = TRUE, type = "lower", legend.title = "Correlation",
-           outline.col = "lightgrey", colors = c("deepskyblue2", "white","firebrick1"), lab = TRUE) +
-  scale_fill_stepsn(name = "Correlation", breaks = c(-1,-0.7,0.7,1), limits = c(-1,1), show.limits = T,
-                    colours = c("deepskyblue2","white","firebrick1"))
-
-test <- tr.7
-toPlot <- round(cor.tr,2)
-all(names(toPlot) == rownames(toPlot))
-names(toPlot)
-
-ggcorrplot(toPlot, show.diag = T, hc.order = F, type = "lower", legend.title = "Correlation",
-           outline.col = "lightgrey", colors = c("deepskyblue2", "white","firebrick1"), lab = TRUE) +
-  scale_fill_stepsn(name = "Correlation", breaks = c(-1,-0.7,0.7,1), limits = c(-1,1), show.limits = T,
-                    colours = c("deepskyblue2","white","firebrick1"))
-
-ggcorrplot(toPlot, show.diag = TRUE, hc.order = FALSE, type = "lower", 
-           outline.col = "lightgrey", colors = c("deepskyblue2", "white","firebrick1"), lab = TRUE) +
-  scale_fill_gradient2(name = "Correlation", low = "deepskyblue2", mid = "white", high = "firebrick1", 
-                       midpoint = 0, limits = c(-1, 1), space = "Lab")
-
+dev.off()
