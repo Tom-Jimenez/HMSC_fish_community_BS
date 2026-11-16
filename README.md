@@ -11,7 +11,7 @@ This repository contains the scripts used in the manuscript Drivers and assembly
 - Script 4 - Compute model's explanatory and predictive power (5-fold cross-validation), and exploration of model fit.
 - Script 5 - Exploration of parameter estimates.
 - Script 6 - Compute predictions.
-- Script 6 - Compute biodiversity metrics and trends.
+- Script 7 - Compute biodiversity metrics and trends.
 
 ## Data sources
 
