@@ -257,7 +257,7 @@ test_fundiv <- alpha.fd.multidim(
   sp_faxes_coord = sp_faxes_coord[ , c("PC1", "PC2", "PC3", "PC4", "PC5")],
   asb_sp_w = biomass.assemblage[1:100, ],
   # Define which functional diversity metrics are to be computed
-  ind_vect = c( "fric", "feve", "fdis", "fdiv"),
+  ind_vect = c("feve", "fdis", "fdiv"),
   scaling = TRUE,
   check_input = TRUE,
   details_returned = TRUE)
@@ -271,7 +271,7 @@ alpha_fd_indices <- alpha.fd.multidim(
   asb_sp_w = biomass.assemblage,
   # Define which functional diversity metrics are to be computed
   # Note that more indices will slow down the process
-  ind_vect = c( "fric", "feve", "fdis", "fdiv"),
+  ind_vect = c("feve", "fdis", "fdiv"),
   scaling = TRUE,
   check_input = TRUE,
   details_returned = TRUE)
@@ -344,7 +344,7 @@ for (start_row in seq(1, n_rows, by = chunk_size)) {
   fundiv_result <- alpha.fd.multidim(
     sp_faxes_coord = sp_faxes_coord[ , c("PC1", "PC2", "PC3", "PC4", "PC5")],
     asb_sp_w = biomass.assemblage[start_row:end_row, ],
-    ind_vect = c( "fric", "feve", "fdis", "fdiv"),
+    ind_vect = c("feve", "fdis", "fdiv"),
     scaling = TRUE,
     check_input = F,
     details_returned = F)
@@ -372,7 +372,6 @@ saveRDS(fundiv_combined, "./data/Biodiversity_metrics/alpha_fd_indices_combined.
 
 alpha_fd_indices <- read_rds("./data/Biodiversity_metrics/alpha_fd_indices_combined.rds")
 fish.diversity <- cbind(fish.diversity,
-                        fric = alpha_fd_indices$fric,
                         feve = alpha_fd_indices$feve,
                         fdis = alpha_fd_indices$fdis,
                         fdiv = alpha_fd_indices$fdiv,
@@ -431,9 +430,9 @@ r.slopes <- fish.diversity %>%
          lowerCI = estimate - 1.96 * std.error,
          upperCI = estimate + 1.96 * std.error)
 slopeLims <- round(max(abs(range(r.slopes$estimate))) * c(-1, 1), 3)
-plot9 <- plotFun(r.slopes, variable = "estimate", size = 0.5) +
+plot <- plotFun(r.slopes, variable = "estimate", size = 0.5) +
   scale_color_gradientn(colours = rev(brewer.pal(11, "RdYlBu")),
-                        limits = slopeLims, name = "Variation") ; plot9
+                        limits = slopeLims, name = "Variation") ; plot
 
 fish.diversity_mean <- cbind(fish.diversity_mean,
                         "Trend richness" = r.slopes$estimate
