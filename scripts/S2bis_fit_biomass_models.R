@@ -1,8 +1,9 @@
 ################################################################################
 ##### Script 2 bis : Fit biomass models ----------------------------------------
+##### Tom Jimenez, 16-11-2026 --------------------------------------------------
 ################################################################################
 
-# remove(list=ls())
+remove(list=ls())
 
 localDir = "."
 data.directory = file.path(localDir, "data")
@@ -22,7 +23,7 @@ fish_survey$season <- as.factor(fish_survey$season)
 data<-fish_survey
 print(colnames(data)[10:150])
 data_species <- data[, 10:150]
-Species <- c(colnames(data_species))
+species <- c(colnames(data_species))
 nb_samples_per_species <- apply(data_species, 2, function(x) sum(x > 0))
 selected_species <- colnames(data_species)[nb_samples_per_species >= 130]
 selected_species
@@ -38,7 +39,7 @@ fish_traits <- fish_traits %>%
                                "generalist/piscivorous",
                                feeding.mode)) %>%
   filter(feeding.mode != "herbivorous") %>%
-  mutate(feeding.mode = as.factor(feeding.mode))     
+  mutate(feeding.mode = as.factor(feeding.mode))   
 
 # Habitat 
 fish_traits <- fish_traits %>%
@@ -57,17 +58,9 @@ summary(fish_traits$feeding.mode)
 summary(fish_traits$habitat)
 summary(fish_traits$body.shape)
 
-# Synchroniser selected_species avec fish_traits
+# Synchronize selected_species with fish_traits
 
 selected_species <- selected_species[selected_species %in% fish_traits$taxon]
-selected_species
-
-# Remove species with higher psrf
-
-species_remove <- c(
-  "Molva molva", "Lesueurigobius friesii", "Scophthalmus maximus", "Squalus acanthias")
-
-selected_species <- setdiff(selected_species, species_remove)
 selected_species
 
 # biomass log transformation : log(X + 1)
@@ -100,17 +93,12 @@ Y = as.matrix(data_species)
 Y = apply(Y,MARGIN = 2,FUN = as.numeric)
 dim(Y)
 
-xy = as.matrix(cbind(data$lon,data$lat))
-rownames(xy)=data$cell
-colnames(xy)=c("x-coordinate","y-coordinate")
-
 alltraits = fish_traits
 TrData = data.frame(taxon = alltraits$taxon, 
                     habitat=alltraits$habitat,
                     body.shape=alltraits$body.shape,
                     feeding.mode=alltraits$feeding.mode,
                     log_age.maturity = alltraits$log_age.maturity,
-                    log_length.max = alltraits$log_length.max,
                     log_offspring.size = alltraits$log_offspring.size,
                     log_fecundity = alltraits$log_fecundity,
                     log_growth = alltraits$log_growth
@@ -142,29 +130,50 @@ tree_plot <- ape::as.phylo.formula(~ Phylum/Class/Order/Family/Genus/Species, da
 tree_plot <- as.phylo(tree_plot)
 tree_plot$edge.length<-rep(1,length(tree_plot$edge))
 
+# Random effects
 studyDesign = data.frame(cell = XData$cell, Year = as.factor(data$Year)) 
 studyDesign <- studyDesign %>% mutate(across(everything(), as.factor))
 
-rL = HmscRandomLevel(units = data$cell)
-rLt = HmscRandomLevel(units = data$Year)
-rL$nfMax = 6
-rLt$nfMax = 6
+xy_cell_df <- data %>%
+  distinct(cell, Lon_c, Lat_c) %>%
+  arrange(cell)
+
+xy_cell <- as.matrix(xy_cell_df[, c("Lon_c", "Lat_c")])
+rownames(xy_cell) <- xy_cell_df$cell
+colnames(xy_cell) <- c("x-coordinate", "y-coordinate")
+
+rL = HmscRandomLevel(sData = xy_cell, longlat = TRUE,
+                     sMethod = "NNGP", nNeighbours = 10)
+rL <- setPriors(rL, nfMin = 1, nfMax = 5)
+
+year_levels <- sort(unique(as.numeric(as.character(data$Year))))
+yr_coords <- matrix(year_levels, ncol = 1,
+                    dimnames = list(as.character(year_levels), "Year"))
+
+rLt = HmscRandomLevel(sData = yr_coords, longlat = FALSE)
+rLt <- setPriors(rLt, nfMin = 1, nfMax = 5)
+
+# Formula
 
 XFormula =  ~  poly(T_floor, degree = 2, raw = TRUE) + 
   poly(Sal_floor, degree = 2, raw = TRUE) +
-  depth + O2_floor + chl + season
+  poly(depth, degree = 2, raw = TRUE) +
+  poly(O2_floor, degree = 2, raw = TRUE) +
+  poly(chl, degree = 2, raw = TRUE) +
+  season
 
 TrFormula = ~ habitat + 
   body.shape + 
   feeding.mode +
   log_age.maturity + 
-  log_length.max + 
   log_offspring.size + 
   log_fecundity +
   log_growth
 
+TrData <- TrData[match(colnames(Y), TrData$taxon), ]
 rownames(TrData) = colnames(Y)
 
+# Define the model and fit it
 Hmsc = Hmsc(Y=Y, 
          XData = XData, 
          XFormula=XFormula, 
@@ -177,16 +186,18 @@ Hmsc = Hmsc(Y=Y,
 
 Hmsc
 
+#save(Hmsc, file = "./data/Hmsc_biomass.RData")
+#load(file = "./data/Hmsc_biomass.RData")
+
 t0 <- Sys.time()
 nChains = 4
 nParallel = 4
-samples = 250
-for (thin in c(100))
+samples = 500
+for (thin in c(500))
 {
   transient = round(0.5*samples*thin)
-  m = sampleMcmc(Hmsc, thin = thin, samples = samples, transient = transient,
-                 nChains = nChains, initPar = "fixed effects",
-                 nParallel = nParallel)
+  m = sampleMcmc(Hmsc, thin = thin, samples = samples, transient = transient, initPar = "fixed effects",
+                 nChains = nChains, nParallel = nParallel)
   filename=file.path(model.directory, paste0("model_chains_",as.character(nChains),"_samples_",as.character(samples),"_thin_",as.character(thin),"_biomass"))
   save(m,file=filename)
 }

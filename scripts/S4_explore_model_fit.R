@@ -1,6 +1,9 @@
 ################################################################################
 ##### Script 4 : Explore model fit ---------------------------------------------
+##### Tom Jimenez, 16-11-2026 --------------------------------------------------
 ################################################################################
+
+remove(list=ls())
 
 localDir = "."
 data.directory = file.path(localDir, "data")
@@ -9,24 +12,27 @@ library(Hmsc)
 set.seed(1)
 
 nChains = 4
-samples = 250
-thin = 100
+samples = 500
+thin = 500
 filename=file.path(model.directory, paste0("model_chains_",as.character(nChains),"_samples_",as.character(samples),"_thin_",as.character(thin),"_occurrence"))
 #filename=file.path(model.directory, paste0("model_chains_",as.character(nChains),"_samples_",as.character(samples),"_thin_",as.character(thin),"_biomass"))
 load(filename)
 
-# We next evaluate model fit in terms of explanatory power
+# We next evaluate model fit
+# Occurrence model
 
 preds = computePredictedValues(m)
 MF = evaluateModelFit(hM=m, predY=preds)
 MF
 
+#save(MF, file = "./data/MF_occurrence.RData")
+
 nParallel = 4
 run.cross.validation = TRUE # start with TRUE when you introduce the script
-filename=file.path(model.directory, paste0("CV_chains_",as.character(nChains),"_samples_",as.character(samples),"_thin_",as.character(m$thin)))
+filename=file.path(model.directory, paste0("CV_chains_",as.character(nChains),"_samples_",as.character(samples),"_thin_",as.character(thin),"_occurrence"))
 if(run.cross.validation){
-  partition = createPartition(m, nfolds = 4, column = "cell")
-  preds = computePredictedValues(m,partition=partition, nParallel = nParallel)
+  partition = createPartition(m, nfolds = 5, column = "cell")
+  preds = pcomputePredictedValues(m,partition=partition, nParallel = nParallel)
   MFCV = evaluateModelFit(hM=m, predY=preds)
   save(partition,MFCV,file=filename)
 } else {
@@ -49,12 +55,14 @@ preds_biomass = computePredictedValues(m)
 MF_biomass = evaluateModelFit(hM=m, predY=preds_biomass)
 MF_biomass
 
+#save(MF_biomass, file = "./data/MF_biomass.RData")
+
 nParallel = 4
 run.cross.validation = TRUE # start with TRUE when you introduce the script
-filename=file.path(model.directory, paste0("CV_chains_",as.character(nChains),"_samples_",as.character(samples),"_thin_",as.character(m$thin),"_biomass"))
+filename=file.path(model.directory, paste0("CV_chains_",as.character(nChains),"_samples_",as.character(samples),"_thin_",as.character(thin),"_biomass"))
 if(run.cross.validation){
-  partition = createPartition(m, nfolds = 4, column = "cell")
-  preds_biomass = computePredictedValues(m,partition=partition, nParallel = 2)
+  partition = createPartition(m, nfolds = 5, column = "cell")
+  preds_biomass = pcomputePredictedValues(m,partition=partition, nParallel = nParallel)
   MFCV_biomass = evaluateModelFit(hM=m, predY=preds_biomass)
   save(partition,MFCV_biomass,file=filename)
 } else {
@@ -79,7 +87,7 @@ Prevalence = colMeans(Y)
 plot(Prevalence,MF$AUC)
 
 # If we would have fitted multiple models, we could compare them either based on the cross-validation
-# (as was done by above) or with WAIC. WAIC can be computed as follows:
+# (as was done by above) or with WAIC.
 
 WAIC = computeWAIC(m)
 WAIC
@@ -90,9 +98,9 @@ library(dplyr)
 library(colorspace)
 library(ggplot2)
 
-MF="./data/MF.RData"
+MF="./data/MF_occurrence.RData"
 load(MF)
-MFCV=file.path(model.directory, paste0("CV_chains_",as.character(nChains),"_samples_",as.character(samples),"_thin_",as.character(m$thin)))
+MFCV=file.path(model.directory, paste0("CV_chains_",as.character(nChains),"_samples_",as.character(samples),"_thin_",as.character(thin),"_occurrence"))
 load(MFCV)
 
 dPower <- data.frame(Species = rep(m$spNames, times = 2),
@@ -113,13 +121,13 @@ RMSEorder <- dPower%>%
 
 dAUC <- dPower%>%
   arrange(factor(Species, levels = AUCorder$Species))%>%
-  mutate(orderCol = rep(c(1:78), each = 2))
+  mutate(orderCol = rep(c(1:44), each = 2))
 dTjur <- dPower%>%
   arrange(factor(Species, levels = Tjurorder$Species))%>%
-  mutate(orderCol = rep(c(1:78), each = 2))
+  mutate(orderCol = rep(c(1:44), each = 2))
 dRMSE <- dPower%>%
   arrange(factor(Species, levels = RMSEorder$Species))%>%
-  mutate(orderCol = rep(c(1:78), each = 2))
+  mutate(orderCol = rep(c(1:44), each = 2))
 
 modelPower <- ggpubr::ggarrange(
   ggplot(dAUC, aes(x = orderCol, y = AUC, fill = Power)) + geom_bar(width = 0.8, stat="identity", position = "dodge") +
@@ -160,3 +168,5 @@ print(low_auc_explanatory$Species)
 
 cat("\nSpecies with AUC < 0.7 - Predictive Power:\n")
 print(low_auc_predictive$Species)
+
+dev.off()

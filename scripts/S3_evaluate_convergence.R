@@ -1,6 +1,9 @@
 ################################################################################
 ##### Script 3 : Evaluate convergence ------------------------------------------
+##### Tom Jimenez, 16-11-2026 --------------------------------------------------
 ################################################################################
+
+remove(list=ls())
 
 localDir = "."
 data.directory = file.path(localDir, "data")
@@ -14,8 +17,8 @@ library(colorspace)
 list.files(model.directory)
 
 nChains = 4
-samples = 250
-thin = 100 
+samples = 500
+thin = 500
 filename=file.path(model.directory, paste0("model_chains_",as.character(nChains),"_samples_",as.character(samples),"_thin_",as.character(thin),"_occurrence"))
 #filename=file.path(model.directory, paste0("model_chains_",as.character(nChains),"_samples_",as.character(samples),"_thin_",as.character(thin),"_biomass"))
 load(filename)
@@ -85,16 +88,16 @@ colnames(psrf_df)
 
 colnames(psrf_df) <- c("psrf", "upper_ci", "parameter")
 
-# Extract species names every 10 lines and propagate
-species_vector <- psrf_df$parameter[seq(1, nrow(psrf_df), by = 10)] %>%
+# Extract species names every 13 lines and propagate
+species_vector <- psrf_df$parameter[seq(1, nrow(psrf_df), by = 13)] %>%
   str_extract("[^,]+(?=\\]$)")  # everything before the final closing bracket
 
 psrf_data <- psrf_df %>%
   mutate(
     species = rep(
-      psrf_df$parameter[seq(1, nrow(psrf_df), by = 10)] %>%
+      psrf_df$parameter[seq(1, nrow(psrf_df), by = 13)] %>%
         str_extract("[^,]+(?=\\]$)"),
-      each = 10
+      each = 13
     ),
     
     # Cleanly extract the variable name
@@ -128,3 +131,5 @@ ggplot(psrf_data, aes(x = variable, y = psrf)) +
   ) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+dev.off()

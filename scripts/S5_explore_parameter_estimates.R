@@ -1,18 +1,24 @@
 ################################################################################
 ##### Script 5 : Explore parameter estimates -----------------------------------
+##### Tom Jimenez, 16-11-2026 --------------------------------------------------
 ################################################################################
 
-# remove(list=ls())
+remove(list=ls())
 
 localDir = "."
 data.directory = file.path(localDir, "data")
 model.directory = file.path(localDir, "models")
+
+library(ggplot2)
+library(sf)
+library(RColorBrewer)
+library(patchwork)
 library(Hmsc)
 set.seed(1)
 
 nChains = 4
-samples = 250
-thin = 100
+samples = 500
+thin = 500
 filename=file.path(model.directory, paste0("model_chains_",as.character(nChains),"_samples_",as.character(samples),"_thin_",as.character(thin),"_occurrence"))
 #filename=file.path(model.directory, paste0("model_chains_",as.character(nChains),"_samples_",as.character(samples),"_thin_",as.character(thin),"_biomass"))
 load(filename)
@@ -23,28 +29,21 @@ load(filename)
 
 head(m$X)
 
-library(viridis)
 par(mfrow=c(1,1))
 groupnames = c("T_floor", "Sal_floor", "depth", "O2_floor", "chl", "season")
                
-group = c(1,1,2,2,3,4,5,6,6)
+group = c(1,1,2,2,3,3,4,4,5,5,6,6)
 VP = computeVariancePartitioning(m, group = group, groupnames = groupnames)
+#save(VP, file = "./data/VP_occurrence.RData")
+#load("./data/VP_occurrence.RData")
 
-library(RColorBrewer)  
 cols <- brewer.pal(8, "Paired")
 
 #windows(3000, 2400, pointsize = 12)
 plotVariancePartitioning(m,VP, cols=cols)
 
-par(mar=c(9,4,1,1)+.1)
-plotVariancePartitioning(m,VP, cex.names = 0.7, las=2, mar = c(5, 8, 4, 2), viridis(8))
-
-plotVariancePartitioning(m,VP, cex.names = 0.7, las=2, mar = c(5, 8, 4, 2), viridis(8),legend.text = FALSE)
-
-dev.off()
-
-plotVariancePartitioning <- function (hM, VP, cols = NULL, main = "", 
-          ...) 
+plotVariancePartitioning <- function (hM, VP, cols = NULL, main = "",
+                                      cex.names = 1, las = 1, ...)
 {
   ng = dim(VP$vals)[1]
   if (is.null(cols)) {
@@ -56,11 +55,22 @@ plotVariancePartitioning <- function (hM, VP, cols = NULL, main = "",
   }
   means = round(100 * rowMeans(VP$vals), 1)
   for (i in 1:ng) {
-    leg[i] = paste(leg[i], " (mean = ", toString(means[i]), 
+    leg[i] = paste(leg[i], " (mean = ", toString(means[i]),
                    ")", sep = "")
   }
-  barplot(VP$vals, main = main, xlab = "", ylab = "Variance proportion", 
-          las = 1, legend = leg, col = cols, ...)
+  #barplot(VP$vals, main = main, xlab = "", ylab = "Variance proportion", 
+  #        las = 1, legend = leg, col = cols, ...)
+  
+  # Species names removed from barplot, then drawn in italics
+  bp <- barplot(VP$vals, main = main, xlab = "", ylab = "Variance proportion",
+                las = las, legend = leg, col = cols,
+                names.arg = rep("", ncol(VP$vals)), ...)
+  
+  axis(1, at = bp, labels = hM$spNames,
+       font = 3,              # 3 = text in italics
+       las = 2,               # names arranged vertically
+       cex.axis = cex.names,
+       tick = FALSE, col = NA)
 }
 
 par(mar = c(14,4,1,1) + .1)
@@ -69,7 +79,66 @@ plotVariancePartitioning(
   cols = cols,
   cex.names = 1.2,
   las = 2,
-  mar = c(5, 8, 4, 2),
+  legend.text = F
+)
+
+dev.off()
+
+plotVariancePartitioning <- function (hM, VP, cols = NULL, main = "",
+                                      cex.names = 1, las = 1,
+                                      rev_order = TRUE, ...)
+{
+  ng = dim(VP$vals)[1]
+  if (is.null(cols)) {
+    cols = heat.colors(ng, alpha = 1)
+  }
+  leg = VP$groupnames
+  for (r in 1:hM$nr) {
+    leg = c(leg, paste("Random: ", hM$rLNames[r], sep = ""))
+  }
+  means = round(100 * rowMeans(VP$vals), 1)
+  for (i in 1:ng) {
+    leg[i] = paste(leg[i], " (mean = ", toString(means[i]),
+                   ")", sep = "")
+  }
+  
+  # Horizontal barplot: the first species is drawn at the BOTTOM by default,
+  # so the order is reversed to read the species from top to bottom
+  vals  <- VP$vals
+  names <- hM$spNames
+  if (rev_order) {
+    idx   <- rev(seq_len(ncol(vals)))
+    vals  <- vals[, idx, drop = FALSE]
+    names <- names[idx]
+  }
+  
+  # Species names removed from the barplot, then drawn in italics on the y axis.
+  # `las` only applies to the NUMBERS of the variance axis (bottom):
+  # las = 1 keeps them horizontal.
+  bp <- barplot(vals, main = main,
+                horiz = TRUE,
+                xlab = "Variance proportion", ylab = "",
+                las = las, legend = leg, col = cols,
+                names.arg = rep("", ncol(vals)), ...)
+  
+  # Species names on the left, horizontal and in italics
+  axis(2, at = bp, labels = names,
+       font = 3,              # 3 = italics
+       las = 1,               # horizontal text
+       cex.axis = cex.names,
+       tick = FALSE, col = NA)
+}
+
+# Large left margin for the species names; height adapted to the number of species
+png("./plots/Variance_partitioning_occurrence.png",
+    width = 9, height = max(6, 0.22 * m$ns), units = "in", res = 300)
+
+par(mar = c(4, 14, 1, 1) + .1)
+plotVariancePartitioning(
+  m, VP,
+  cols = cols,
+  cex.names = 0.9,
+  las = 1,
   legend.text = F
 )
 
@@ -108,7 +177,6 @@ tree_plot <- ggtree(tree_plot, branch.length="none") + geom_tiplab(fontface = "i
 class(tree_plot)
 length(tree_plot$edge.length)
 nrow(tree_plot$edge)
-# un objet phylo doit avoir autant de longueurs que d’arêtes mais ce n'est pas le cas ici
 
 library(ape)
 tree_plot <- reorder.phylo(tree_plot, "postorder")
@@ -141,18 +209,21 @@ temp.beta$pos.neg <- factor(temp.beta$pos.neg, levels = c(1,0,-1)) # this is nee
 temp.beta$Environment <- factor(temp.beta$param)
 levels(temp.beta$Environment)
 temp.beta$Environment <- dplyr::recode(temp.beta$Environment, 
-                                       "chl" = "chl",
-                                       "depth" = "depth",
+                                       "poly(chl, degree = 2, raw = TRUE)1" = "chl1",
+                                       "poly(chl, degree = 2, raw = TRUE)2" = "chl2",
+                                       "poly(depth, degree = 2, raw = TRUE)1" = "depth1",
+                                       "poly(depth, degree = 2, raw = TRUE)2" = "depth2",
                                        "poly(T_floor, degree = 2, raw = TRUE)1" = "T_floor1",
                                        "poly(T_floor, degree = 2, raw = TRUE)2" = "T_floor2",
                                        "poly(Sal_floor, degree = 2, raw = TRUE)1" = "Sal_floor1",
                                        "poly(Sal_floor, degree = 2, raw = TRUE)2" = "Sal_floor2",
-                                       "O2_floor" = "O2_floor",
+                                       "poly(O2_floor, degree = 2, raw = TRUE)1" = "O2_floor1",
+                                       "poly(O2_floor, degree = 2, raw = TRUE)2" = "O2_floor2",
                                        "seasonSummer" = "season Summer",
                                        "seasonWinter" = "season Winter")
 temp.beta$Environment <-  factor(temp.beta$Environment,
-                                 levels = c("(Intercept)", "depth", "Sal_floor1", "Sal_floor2",
-                                            "T_floor1", "T_floor2", "O2_floor", "chl",
+                                 levels = c("(Intercept)", "depth1", "depth2", "Sal_floor1", "Sal_floor2",
+                                            "T_floor1", "T_floor2", "O2_floor1", "O2_floor2", "chl1", "chl2",
                                             "season Summer", "season Winter"))
 levels(temp.beta$Environment)
 
@@ -165,10 +236,21 @@ sp_order <- c(
   "Limanda limanda",
   "Pleuronectes platessa",
   "Hippoglossoides platessoides",
+  "Scophthalmus rhombus",
+  "Scophthalmus maximus",
   "Solea solea",
   "Buglossidium luteum",
-  "Scophthalmus rhombus",
   "Arnoglossus laterna",
+  "Pollachius pollachius",
+  "Pollachius virens",
+  "Trisopterus minutus",
+  "Trisopterus esmarkii",
+  "Melanogrammus aeglefinus",
+  "Gadus morhua",
+  "Merlangius merlangus",
+  "Molva molva",
+  "Enchelyopus cimbrius",
+  "Merluccius merluccius",
   "Hyperoplus immaculatus",
   "Hyperoplus lanceolatus",
   "Ammodytes marinus",
@@ -178,27 +260,20 @@ sp_order <- c(
   "Trachinus draco",
   "Agonus cataphractus",
   "Lumpenus lampretaeformis",
-  "Pollachius pollachius",
-  "Pollachius virens",
-  "Trisopterus minutus",
-  "Trisopterus esmarkii",
-  "Melanogrammus aeglefinus",
-  "Gadus morhua",
-  "Merlangius merlangus",
-  "Merluccius merluccius",
-  "Enchelyopus cimbrius",
   "Sprattus sprattus",
   "Clupea harengus",
   "Engraulis encrasicolus",
+  "Lesueurigobius friesii",
+  "Aphia minuta",
   "Myoxocephalus quadricornis",
   "Gasterosteus aculeatus",
-  "Aphia minuta",
   "Mullus surmuletus",
   "Osmerus eperlanus",
   "Trachurus trachurus",
   "Entelurus aequoreus",
   "Scomber scombrus",
-  "Callionymus lyra"
+  "Callionymus lyra",
+  "Squalus acanthias"
 )
 
 temp.beta$Species_sort <- as.factor(temp.beta$species)
@@ -295,7 +370,7 @@ library(ggimage)
 library(ggtree)
 library(dplyr)
 
-supportLevel <- 0.85
+supportLevel <- 0.95
 
 # gamma heatmap
 postGamma <-  getPostEstimate(m, parName = "Gamma")
@@ -323,19 +398,22 @@ temp.gamma$pos.neg <- factor(temp.gamma$pos.neg, levels = c(1,0,-1)) # this is n
 temp.gamma$Environment <- factor(temp.gamma$param)
 levels(temp.gamma$Environment)
 temp.gamma$Environment <- dplyr::recode(temp.gamma$Environment, 
-                                        "chl" = "chl",
-                                        "depth" = "depth",
-                                        "poly(T_floor, degree = 2, raw = TRUE)1" = "T_floor1",
-                                        "poly(T_floor, degree = 2, raw = TRUE)2" = "T_floor2",
-                                        "poly(Sal_floor, degree = 2, raw = TRUE)1" = "Sal_floor1",
-                                        "poly(Sal_floor, degree = 2, raw = TRUE)2" = "Sal_floor2",
-                                        "O2_floor" = "O2_floor",
-                                        "seasonSummer" = "season Summer",
-                                        "seasonWinter" = "season Winter")
+                                       "poly(chl, degree = 2, raw = TRUE)1" = "chl1",
+                                       "poly(chl, degree = 2, raw = TRUE)2" = "chl2",
+                                       "poly(depth, degree = 2, raw = TRUE)1" = "depth1",
+                                       "poly(depth, degree = 2, raw = TRUE)2" = "depth2",
+                                       "poly(T_floor, degree = 2, raw = TRUE)1" = "T_floor1",
+                                       "poly(T_floor, degree = 2, raw = TRUE)2" = "T_floor2",
+                                       "poly(Sal_floor, degree = 2, raw = TRUE)1" = "Sal_floor1",
+                                       "poly(Sal_floor, degree = 2, raw = TRUE)2" = "Sal_floor2",
+                                       "poly(O2_floor, degree = 2, raw = TRUE)1" = "O2_floor1",
+                                       "poly(O2_floor, degree = 2, raw = TRUE)2" = "O2_floor2",
+                                       "seasonSummer" = "season Summer",
+                                       "seasonWinter" = "season Winter")
 temp.gamma$Environment <-  factor(temp.gamma$Environment,
-                                  levels = c("(Intercept)", "depth", "Sal_floor1", "Sal_floor2",
-                                             "T_floor1", "T_floor2", "O2_floor", "chl",
-                                             "season Summer", "season Winter"))
+                                 levels = c("(Intercept)", "depth1", "depth2", "Sal_floor1", "Sal_floor2",
+                                            "T_floor1", "T_floor2", "O2_floor1", "O2_floor2", "chl1", "chl2",
+                                            "season Summer", "season Winter"))
 levels(temp.gamma$Environment)
 
 #windows(800, 600, pointsize = 12) #opens a separate window with the size you want
@@ -358,12 +436,11 @@ temp.gamma$Traits <- dplyr::recode(temp.gamma$Traits,
                                    "log_age.maturity" = "Age at maturity",
                                    "log_fecundity" = "Fecundity",
                                    "log_growth" = "Growth (K)",
-                                   "log_length.max" = "Maximum length",
                                    "log_offspring.size" = "Offspring size"
 )
 sort(levels(temp.gamma$Traits))
 temp.gamma$Traits <-  factor(temp.gamma$Traits,
-                             levels = rev(c("Age at maturity", "Fecundity", "Growth (K)", "Maximum length", "Offspring size",
+                             levels = rev(c("Age at maturity", "Fecundity", "Growth (K)", "Offspring size",
                                             "Elongated (body shape)", "Flat  (body shape)", "Fusiform  (body shape)",
                                             "Generalist / Piscivorous (feeding mode)", "Planktivorous (feeding mode)",
                                             "Demersal (habitat)", "Pelagic (habitat)",
@@ -416,14 +493,14 @@ myGamma$Only_traits[myGamma$Group == "Intercept"] <- "Intercept"
 myGamma$Group[is.na(myGamma$Group)] <- ""
 myGamma$Group <- gsub(" ", "\n", myGamma$Group)
 myGamma$Group <- stringr::str_to_title(myGamma$Group) 
-myGamma$Group[myGamma$Group == "Caudal\nFin\nShape"] <- "Caudal Fin\nShape"
+#myGamma$Group[myGamma$Group == "Caudal\nFin\nShape"] <- "Caudal Fin\nShape"
 
 # Add grouping to continuous variables:
 unique(myGamma$Group)
 myGamma$Group[myGamma$Group == ""] <- "Continuous\nTraits"
 
 # Set level order
-myGamma$Group <- factor(myGamma$Group, levels = c("Intercept", "Continuous\nTraits", "Body\nShape", "Caudal Fin\nShape", "Feeding\nMode", "Habitat", "Spawning\nType"))
+myGamma$Group <- factor(myGamma$Group, levels = c("Intercept", "Continuous\nTraits", "Body\nShape", "Feeding\nMode", "Habitat"))
 myGamma$Only_traits <- factor(myGamma$Only_traits, levels = rev(sort(unique(myGamma$Only_traits))))
 
 gamma.plot.opt2 <- ggplot(myGamma, aes(x = Environment, y = Only_traits, fill = pos.neg)) + 
@@ -531,16 +608,17 @@ summary(mpost$Alpha[[1]], quantiles = c(0.025, 0.5, 0.975))
 round(head(m$X),2)
 colnames(m$X)
 groupnames = c("T_floor", "Sal_floor", "depth", "O2_floor", "chl", "season")
-group = c(1,1,1,2,2,3,4,5,6,6)
+group = c(1,1,2,2,3,3,4,4,5,5,6,6)
 
-VPfullPa <- computeVariancePartitioning(m, group = group, groupnames = groupnames)
-trait.beta <- data.frame(FullPa = c(VPfullPa$R2T$Beta*100))
+VP <- computeVariancePartitioning(m, group = group, groupnames = groupnames)
+trait.beta <- data.frame(Value = c(VP$R2T$Beta*100))
 trait.beta <- round(trait.beta, 2)
-trait.beta$Environment <- c("(Intercept)", "depth", "Sal_floor1", "Sal_floor2",
-                            "T_floor1", "T_floor2", "O2_floor", "chl", "season Summer", "season Winter")
+trait.beta$Environment <- c("(Intercept)", "depth1", "depth2", "Sal_floor1", "Sal_floor2",
+                            "T_floor1", "T_floor2", "O2_floor1", "O2_floor2", "chl1", "chl2", 
+                            "season Summer", "season Winter")
 trait.beta
 
-ggplot(trait.beta, aes(x = reorder(Environment, - FullPa), y = FullPa)) + geom_bar(stat = "identity", position = position_dodge(.9), fill = "skyblue4") +
+ggplot(trait.beta, aes(x = reorder(Environment, - Value), y = Value)) + geom_bar(stat = "identity", position = position_dodge(.9), fill = "skyblue4") +
   labs(subtitle = "Proportion of response to covariates explained by traits", y = "Proportion (%)", x = "") +
   theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1), legend.position = c(0.8, 0.6),
         text = element_text(size = 18))
@@ -563,6 +641,7 @@ postEtamean4 <- postEta$mean[,4] # Latent factor 4
 postEtamean5 <- postEta$mean[,5] # Latent factor 5
 postEtamean6 <- postEta$mean[,6] # Latent factor 6
 
+data <- readRDS("./data/fish_survey_Baltic_sea_v2.rds")
 xy_cell = data.frame(cell = data$cell, x_coordinate = data$Lon_c, y_coordinate = data$Lat_c)
 xy_cell_unique <- xy_cell[!duplicated(xy_cell), ]
 dataLf <- cbind(as.data.frame(xy_cell_unique), postEtamean1, postEtamean2, postEtamean3, postEtamean4, postEtamean5, postEtamean6)
@@ -586,47 +665,93 @@ ggplot(data = world) + geom_sf(fill = "grey80", color = "grey20") +
 
 library(paletteer)
 
-latfac1 <- ggplot(data = world) + 
-  geom_point(data = dataLf, aes(x = `x_coordinate`, y = `y_coordinate`, color = postEtamean1), size = 3) +
+lim <- max(abs(dataLf$postEtamean1), na.rm = TRUE)
+
+latfac1 <- ggplot(data = world) +
+  geom_point(data = dataLf,
+             aes(x = `x_coordinate`, y = `y_coordinate`, color = postEtamean1),
+             size = 3) +
   geom_sf(fill = "grey80", color = "grey20") +
-  coord_sf(xlim = range(dataLf$`x_coordinate`) + c(-1, 1), 
-           ylim = range(dataLf$`y_coordinate`) + c(-1, 1), 
+  coord_sf(xlim = range(dataLf$`x_coordinate`) + c(-1, 1),
+           ylim = range(dataLf$`y_coordinate`) + c(-1, 1),
            expand = FALSE) +
-  scale_color_gradient2(low = "#003366", mid = "white", high = "#E31B23", 
-                        midpoint = mean(dataLf$postEtamean1), 
+  scale_color_gradient2(low = "#003366", mid = "white", high = "#E31B23",
+                        midpoint = 0, 
+                        limits = c(-lim, lim), 
                         name = "Latent\nfactor 1") +
-  annotate("text", x = min(dataLf$`x_coordinate`), 
-           y = max(dataLf$`y_coordinate`) + 0.5, 
-           label = "A", size = 6, fontface = "bold", color = "black") + 
+  labs(x = "Longitude (°E)",
+       y = "Latitude (°N)") +
+  annotate("text", x = min(dataLf$`x_coordinate`),
+           y = max(dataLf$`y_coordinate`) + 0.5,
+           label = "A", size = 6, fontface = "bold", color = "black") +
   theme_classic() +
-  theme(panel.border = element_rect(colour = "black", fill = NA, size = 1))
+  theme(panel.border = element_rect(colour = "black", fill = NA, linewidth = 1))
 
-latfac2 <- ggplot(data = world) + 
-  geom_point(data = dataLf, aes(x = `x_coordinate`, y = `y_coordinate`, color = postEtamean2), size = 3) +
-  geom_sf(fill = "grey80", color = "grey20") +
-   coord_sf(xlim = range(dataLf$`x_coordinate`) + c(-1, 1), 
-           ylim = range(dataLf$`y_coordinate`) + c(-1, 1), 
-           expand = FALSE) +
-  scale_color_gradient2(low = "#003366", mid = "white", high = "#E31B23", 
-                        midpoint = mean(dataLf$postEtamean2), 
-                        name = "Latent\nfactor 2") +
-  annotate("text", x = min(dataLf$`x_coordinate`), 
-           y = max(dataLf$`y_coordinate`) + 0.5, 
-           label = "B", size = 6, fontface = "bold", color = "black") + 
-  theme_classic() +
-  theme(panel.border = element_rect(colour = "black", fill = NA, size = 1))
+latfac1
 
-latfac3 <- ggplot(data = world) + 
-  geom_point(data = dataLf, aes(x = `x_coordinate`, y = `y_coordinate`, color = postEtamean3), size = 3) +
-  geom_sf(fill = "grey80", color = "grey20") +
-    coord_sf(xlim = range(dataLf$`x_coordinate`) + c(-1, 1), 
-           ylim = range(dataLf$`y_coordinate`) + c(-1, 1), 
-           expand = FALSE) +
-  scale_color_gradient2(low = "#003366", mid = "white", high = "#E31B23", 
-                        midpoint = mean(dataLf$postEtamean3), 
-                        name = "Latent\nfactor 3") +
-  annotate("text", x = min(dataLf$`x_coordinate`), 
-           y = max(dataLf$`y_coordinate`) + 0.5, 
-           label = "C", size = 6, fontface = "bold", color = "black") + 
-  theme_classic() +
-  theme(panel.border = element_rect(colour = "black", fill = NA, size = 1))
+ggsave("./plots/latfac1.png", width = 5, height = 5)
+
+# Function: map of one latent factor
+# data         : data frame with x_coordinate, y_coordinate and postEtamean<k>
+# world        : sf object used as background map
+# factor_id    : number of the latent factor (1, 2, 3, ...)
+# label        : panel letter ("A", "B", ...)
+# common_limit : optional single number; if given, all factors share the colour
+#                scale c(-common_limit, common_limit) (comparable colours)
+plot_latent_factor <- function(data, world, factor_id, label,
+                               common_limit = NULL) {
+  
+  var <- paste0("postEtamean", factor_id)
+  stopifnot(var %in% names(data))
+  
+  # Symmetric limits around 0 so that white = 0 is at the centre of the colour bar
+  lim <- if (is.null(common_limit)) {
+    max(abs(data[[var]]), na.rm = TRUE)
+  } else common_limit
+  
+  ggplot(data = world) +
+    geom_point(data = data,
+               aes(x = `x_coordinate`, y = `y_coordinate`, color = .data[[var]]),
+               size = 3) +
+    geom_sf(fill = "grey80", color = "grey20") +
+    coord_sf(xlim = range(data$`x_coordinate`) + c(-1, 1),
+             ylim = range(data$`y_coordinate`) + c(-1, 1),
+             expand = FALSE) +
+    scale_color_gradient2(low = "#003366", mid = "white", high = "#E31B23",
+                          midpoint = 0,                  # zero = white
+                          limits = c(-lim, lim),
+                          name = paste0("Latent\nfactor ", factor_id)) +
+    labs(x = "Longitude", y = "Latitude") +
+    annotate("text", x = min(data$`x_coordinate`),
+             y = max(data$`y_coordinate`) + 0.5,
+             label = label, size = 6, fontface = "bold", color = "black") +
+    theme_classic() +
+    theme(panel.border = element_rect(colour = "black", fill = NA, linewidth = 1))
+}
+
+factors <- 1:3
+labels  <- c("A", "B", "C")
+
+# One colour scale per factor 
+# To share the same scale across the factors, use instead:
+#   common_limit <- max(abs(unlist(dataLf[paste0("postEtamean", factors)])), na.rm = TRUE)
+# and pass common_limit = common_limit below.
+latfac <- Map(function(k, lab) plot_latent_factor(dataLf, world, k, lab),
+              factors, labels)
+names(latfac) <- paste0("latfac", factors)
+
+# Save each plot
+for (k in factors) {
+  ggsave(paste0("./plots/latfac", k, ".png"), latfac[[k]], width = 5, height = 5)
+}
+
+# Stack the 3 latent-factor maps vertically
+latfac_stacked <- latfac$latfac1 / latfac$latfac2 / latfac$latfac3
+
+latfac_stacked
+
+# Save
+ggsave("./plots/latfac_stacked.png", latfac_stacked,
+       width = 5, height = 10, dpi = 300)
+
+dev.off()
