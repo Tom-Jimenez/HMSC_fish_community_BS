@@ -8,9 +8,10 @@ This repository contains the scripts used in the manuscript Drivers and assembly
 - Script 2 - Prepare all the data inputs for fitting the HMSC model, i.e., environmental data (X), community data (Y), trait data (T) and taxonomy (C). Also, define the model structure and define random effects. Finally, fit the presence/absence HMSC model.
 - Script 2 bis - Same as script 2 but for the biomass HMSC model.
 - Script 3 - Convergence evaluation.
-- Script 4 - Compute model's explanatory and predictive power (4-fold crossvalidation), and exploration of model fit.
+- Script 4 - Compute model's explanatory and predictive power (5-fold cross-validation), and exploration of model fit.
 - Script 5 - Exploration of parameter estimates.
-- Script 6 - Compute predictions and biodiversity metrics.
+- Script 6 - Compute predictions.
+- Script 6 - Compute biodiversity metrics and trends.
 
 ## Data sources
 
