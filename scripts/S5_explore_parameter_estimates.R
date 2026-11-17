@@ -38,51 +38,7 @@ VP = computeVariancePartitioning(m, group = group, groupnames = groupnames)
 #load("./data/VP_occurrence.RData")
 
 cols <- brewer.pal(8, "Paired")
-
-#windows(3000, 2400, pointsize = 12)
 plotVariancePartitioning(m,VP, cols=cols)
-
-plotVariancePartitioning <- function (hM, VP, cols = NULL, main = "",
-                                      cex.names = 1, las = 1, ...)
-{
-  ng = dim(VP$vals)[1]
-  if (is.null(cols)) {
-    cols = heat.colors(ng, alpha = 1)
-  }
-  leg = VP$groupnames
-  for (r in 1:hM$nr) {
-    leg = c(leg, paste("Random: ", hM$rLNames[r], sep = ""))
-  }
-  means = round(100 * rowMeans(VP$vals), 1)
-  for (i in 1:ng) {
-    leg[i] = paste(leg[i], " (mean = ", toString(means[i]),
-                   ")", sep = "")
-  }
-  #barplot(VP$vals, main = main, xlab = "", ylab = "Variance proportion", 
-  #        las = 1, legend = leg, col = cols, ...)
-  
-  # Species names removed from barplot, then drawn in italics
-  bp <- barplot(VP$vals, main = main, xlab = "", ylab = "Variance proportion",
-                las = las, legend = leg, col = cols,
-                names.arg = rep("", ncol(VP$vals)), ...)
-  
-  axis(1, at = bp, labels = hM$spNames,
-       font = 3,              # 3 = text in italics
-       las = 2,               # names arranged vertically
-       cex.axis = cex.names,
-       tick = FALSE, col = NA)
-}
-
-par(mar = c(14,4,1,1) + .1)
-plotVariancePartitioning(
-  m, VP,
-  cols = cols,
-  cex.names = 1.2,
-  las = 2,
-  legend.text = F
-)
-
-dev.off()
 
 plotVariancePartitioning <- function (hM, VP, cols = NULL, main = "",
                                       cex.names = 1, las = 1,
